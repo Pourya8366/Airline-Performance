@@ -7,18 +7,16 @@ class MRWordCount(MRJob):
 
         flight = line.split(",")
 
-        #flight_detail:
-        #0: airline
-        #1: depDelay
-        #2: arrDelay
-        #3: exceeded time in plane: ActualElapsedTime - CRSElapsedTime
-        #4: if cancelled: 0: not cancelled, 1: cancelled
-        #5: if diverted: 0: not diverted, 1: diverted
+        #flight_stats:
+        #0: depDelay
+        #1: arrDelay
+        #2: exceeded time in plane: ActualElapsedTime - CRSElapsedTime
+        #3: if cancelled: 0: not cancelled, 1: cancelled
+        #4: if diverted: 0: not diverted, 1: diverted
+        #5: 1 flight
+        flight_stats = [0.0, 0.0, 0.0, 1, 1, 1]
 
-        # 1. add airline
-        flight_detail = [flight[6].strip('"'), 0.0, 0.0, 0.0, 1, 1]
-
-        #flight[6]: airline
+        
         #flight[33]: DepDelay
         #flight[44]: ArrDelay
         #flight[49]: Cancelled: 0.00 or 1.00
@@ -28,58 +26,63 @@ class MRWordCount(MRJob):
 
         #Check if flight was not cancelled
         if flight[49] == "0.00" and flight[51] == "0.00":
-            # 2. add depDelay
-            flight_detail[1] = float(flight[33])
+            # 1. add depDelay
+            #tip: when no delay, valude would be ""
+            flight_stats[0] = float(flight[33]) if flight[33] != "" else 0.0
 
-            # 3. add arrDelay
-            flight_detail[2] = float(flight[44])
+            # 2. add arrDelay
+            flight_stats[1] = float(flight[44]) if flight[44] != "" else 0.0
 
-            # 4. exceeded time in plane
-            flight_detail[3] = float(flight[53]) - float(flight[52])
+            # 3. exceeded time in plane
+            flight_stats[2] = float(flight[53]) - float(flight[52])
         
-            #5. not cancelled
-            flight_detail[4] = 0
-            flight_detail[5] = 0
+            # 4. not cancelled
+            flight_stats[3] = 0
+
+            # 5. not diverted
+            flight_stats[4] = 0
             
-        elif flight[51] == "1.00":
-            flight_detail[5] = 1
+        elif flight[51] == "0.00":
+            flight_stats[4] = 0
 
         #flight[14]: origin airport
         #flight[24]: destination airport
-        yield [flight[14].strip('"'), flight[24].strip('"')], flight_detail
+        #flight[6]: airline
+        yield [flight[14].strip('"'), flight[24].strip('"'), flight[6].strip('"')], flight_stats
 
-    
-    def reducer(self, airports, flights):
-        flights = list(flights)
+    def combiner(self, airport_flight, flights_stats):
+        flights_stats = list(flights_stats)
+
+        # for each key: origin_airport, dest_airport, airline
+        #0: total depDelay
+        #1: total arrDelay
+        #2: total exceeded time in plane: ActualElapsedTime - CRSElapsedTime
+        #3: no. cancelled
+        #4: no. diverted
+        #5: no. flights
+        stats = [0.0, 0.0, 0.0, 0, 0, 0]
         
-        #total flights for each airport pair (origin, dest)
-        flights_count = 0
+        for flight_stat in flights_stats:
+            stats = [stats[i]+flight_stat[i] for i in range(6)]
 
-        #key: airline
-        #values:
-        #0: totalDepDelay
-        #1: totalArrDelay
-        #2: total exeed time in plane
-        #3: no. flights
-        #4: no. cancelled
-        flights_dict = {}
+        yield airport_flight, stats
+
+    def reducer(self, airport_flight, flights_stats):
+        flights_stats = list(flights_stats)
+
+        # for each key: origin_airport, dest_airport, airline
+        #0: total depDelay
+        #1: total arrDelay
+        #2: total exceeded time in plane: ActualElapsedTime - CRSElapsedTime
+        #3: no. cancelled
+        #4: no. diverted
+        #5: no. flights
+        stats = [0.0, 0.0, 0.0, 0, 0, 0]
         
-        # flight:
-        #0: airline
-        #1: depDelay
-        #2: arrDelay
-        #3: exceeded time in plane: ActualElapsedTime - CRSElapsedTime
-        #4: if cancelled: 0: not cancelled, 1: cancelled
-        for flight in flights:
-            airline = flight[0]
-            flights_dict.setdefault(airline, [0.0, 0.0, 0.0, 0, 0])
-            airline_dict = flights_dict[airline]
+        for flight_stat in flights_stats:
+            stats = [stats[i]+flight_stat[i] for i in range(6)]
 
-            airline_dict = [airline_dict[0] + flight[1], airline_dict[1] + flight[2], airline_dict[2] + flight[3], airline_dict[3] + 1, airline_dict[4]+ flight[4]]
-
-            flights_count += 1
-        
-        yield [airports, flights_count], flights_dict
+        yield tuple(airport_flight), tuple(stats)
 
         
 if __name__ == '__main__':
