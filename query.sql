@@ -47,3 +47,6 @@ select src, dst, max(Distance) as Distance from stats group by src, dst order by
 
 ---- airports ----
 select src, dst, avg(Arrival_Delay) as Arrival_Delay from stats group by src, dst order by Arrival_Delay desc
+
+-- number of flights
+select src, dst, count(*) as NumberOfFlights from stats group by src, dst order by NumberOfFlights desc
