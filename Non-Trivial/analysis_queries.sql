@@ -6,7 +6,7 @@ select Dest
 from flights
 
 -- select fields from flights as edges
-select Origin as src, Dest as dst, Reporting_Airline as airline, Year, Quarter, Month, DayofMonth, DayOfWeek, Origin, OriginStateName, OriginCityName, Dest, DestStateName, DestCityName, cast(DepDelay as int) as Departure_delay, cast(ArrDelay as int) as Arrival_Delay, DepTimeBlk, cast(Cancelled as int) as Cancelled, cast(CRSElapsedTime as int) as CRSElapsed_Time, cast(ActualElapsedTime as int) as Actual_Elapsed_Time, Distance from flights
+select Origin as src, Dest as dst, Reporting_Airline as airline, Year, Quarter, Month, DayofMonth, DayOfWeek, Origin, OriginStateName, OriginCityName, Dest, DestStateName, DestCityName, cast(DepDelay as int) as Departure_delay, cast(ArrDelay as int) as Arrival_Delay, DepTimeBlk, cast(Cancelled as int) as Cancelled, cast(CRSElapsedTime as int) as CRSElapsed_Time, cast(ActualElapsedTime as int) as Actual_Elapsed_Time, cast(Distance as int) as Distance from flights
 
 ---- Time ---- 
 
@@ -45,8 +45,12 @@ select Year, Month, airline, avg(ArrDelay) as Arrival_Delay, sum(Cancelled) as T
 -- longest distance
 select src, dst, max(Distance) as Distance from stats group by src, dst order by Distance
 
+select Distance, avg(ArrDelay) as Arrival_Delay from stats group by Distance order by Arrival_Delay desc
+
 ---- airports ----
 select src, dst, avg(Arrival_Delay) as Arrival_Delay from stats group by src, dst order by Arrival_Delay desc
 
 -- number of flights
 select src, dst, count(*) as NumberOfFlights from stats group by src, dst order by NumberOfFlights desc
+
+select Year, Month, DayOfWeek , avg(ArrDelay) as Arrival_Delay from stats group by Year, Month, DayOfWeek order by Arrival_Delay desc

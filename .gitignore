@@ -131,3 +131,7 @@ dmypy.json
 .pyre/
 *.csv
 .DS_Store
+Airline.key
+
+Spark_Analysis.ipynb
+spark.scala
